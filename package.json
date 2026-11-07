@@ -1,0 +1,13 @@
+{
+  "name": "salon-booking-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "AI WhatsApp receptionist for a beauty salon built with n8n, Google Gemini and Google Sheets.",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-workflows.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "keywords": ["n8n", "whatsapp", "chatbot", "gemini", "ai-agent", "google-sheets", "booking"],
+  "license": "MIT"
+}

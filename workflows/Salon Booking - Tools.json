@@ -1,0 +1,650 @@
+{
+  "name": "Salon Booking - Tools",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Salon Booking - Tools\nCalled by the AI agent in **Salon Booking Bot** through 5 tools.\n\n1. Loads the 4 tables from Google Sheets\n2. **Booking Engine** (pure JavaScript, unit tested in `/src`) decides the answer\n3. If the action changes data, the matching branch writes to the sheet\n4. **Return Result** sends the answer back to the agent\n\nTest it: pin data is attached to the trigger, just click *Test workflow*.",
+        "height": 300,
+        "width": 520,
+        "color": 5
+      },
+      "id": "81eb3a5b-5b09-4acb-b409-f4560dc61f33",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Writes\n\nOnly `create_appointment` and `cancel_appointment` modify the sheet. Values are written RAW so phones and dates stay as text.",
+        "height": 460,
+        "width": 628,
+        "color": 7
+      },
+      "id": "df5fa772-038f-4646-b2ea-faa9751ac6b0",
+      "name": "Note: Writes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "action"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "profile_name"
+            },
+            {
+              "name": "client_name"
+            },
+            {
+              "name": "service_id"
+            },
+            {
+              "name": "staff_id"
+            },
+            {
+              "name": "date"
+            },
+            {
+              "name": "time"
+            },
+            {
+              "name": "appointment_id"
+            }
+          ]
+        }
+      },
+      "id": "00dfb37d-cf16-47c2-8d7d-58c96b3040d4",
+      "name": "When Called by Agent",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Services",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "b7de45ec-126e-481e-a21e-7c4af81eb8b1",
+      "name": "Read Services",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        208,
+        384
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Staff",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "93118dd8-ff62-43dc-b5e2-c420011174be",
+      "name": "Read Staff",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        368,
+        384
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Appointments",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "25e891ad-90cb-4fc4-b40f-9c8c8286d559",
+      "name": "Read Appointments",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        544,
+        384
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "b0c62d6b-58e7-4fa0-b5ec-2713b5eac0ab",
+      "name": "Read Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        384
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Booking Engine\n * ---------------------------------------------------------------------------\n * Pure business logic for the salon booking bot. No I/O, no n8n globals:\n * it receives the tool input plus the current sheet rows and returns\n *   - `response`: what the AI agent receives back from the tool\n *   - `op`: which write (if any) the n8n workflow must perform afterwards\n *   - the rows to write (appointment_row / client_row / update_row)\n *\n * This file is the single source of truth. `scripts/build-workflows.js`\n * embeds it into the \"Booking Engine\" Code node, and `tests/` runs it\n * locally with Node's built-in test runner.\n */\n\nconst CONFIG = {\n  timezone: 'America/Argentina/Buenos_Aires',\n  currency: 'ARS',\n  slotStepMin: 30,           // granularity of offered start times\n  minLeadMin: 60,            // can't book less than 1 hour from now\n  maxDaysAhead: 30,          // booking window\n  cancelMinHoursBefore: 2,   // cancellations allowed up to 2 hours before\n  maxSlotsShown: 12,         // per stylist, to keep tool output small\n  nextAvailableSearchDays: 7,\n};\n\nconst DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];\nconst DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n\n// ----------------------------------------------------------------- helpers --\n\nconst str = (v) => (v === null || v === undefined ? '' : String(v).trim());\n\nfunction isActive(v) {\n  const s = str(v).toLowerCase();\n  if (s === '') return true; // empty cell = active by default\n  return ['true', 'yes', 'y', '1', 'si', 'sí'].includes(s);\n}\n\n/** Accepts 'YYYY-MM-DD', 'DD/MM/YYYY' or a Sheets serial number. */\nfunction normDate(v) {\n  if (typeof v === 'number' && v > 20000) {\n    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000);\n    return d.toISOString().slice(0, 10);\n  }\n  const s = str(v);\n  let m = s.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);\n  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;\n  m = s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);\n  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;\n  return null;\n}\n\nfunction isRealDate(d) {\n  if (!d) return false;\n  const [y, m, day] = d.split('-').map(Number);\n  const dt = new Date(Date.UTC(y, m - 1, day));\n  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === day;\n}\n\n/** Accepts '9:00', '09:00', '9:00:00', '9', '9am', '3:30 pm' or a day fraction. Returns minutes. */\nfunction toMinutes(v) {\n  if (typeof v === 'number' && v >= 0 && v < 1) return Math.round(v * 1440);\n  const s = str(v).toLowerCase().replace(/\\s+/g, '');\n  const m = s.match(/^(\\d{1,2})(?:[:.h](\\d{2}))?(?::\\d{2})?(am|pm|hs)?$/);\n  if (!m) return null;\n  let h = Number(m[1]);\n  const min = Number(m[2] || 0);\n  if (m[3] === 'pm' && h < 12) h += 12;\n  if (m[3] === 'am' && h === 12) h = 0;\n  if (h > 23 || min > 59) return null;\n  return h * 60 + min;\n}\n\nconst fmtTime = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;\n\nfunction addDays(dateStr, n) {\n  const [y, m, d] = dateStr.split('-').map(Number);\n  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);\n}\n\nfunction dayIndex(dateStr) {\n  const [y, m, d] = dateStr.split('-').map(Number);\n  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();\n}\n\nconst diffDays = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);\n\n/** Current date and minutes-of-day in the salon's time zone (no external libs). */\nfunction nowInZone(tz = CONFIG.timezone, at = new Date()) {\n  const parts = Object.fromEntries(\n    new Intl.DateTimeFormat('en-CA', {\n      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',\n      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',\n    }).formatToParts(at).map((p) => [p.type, p.value]),\n  );\n  const date = `${parts.year}-${parts.month}-${parts.day}`;\n  const minutes = Number(parts.hour) * 60 + Number(parts.minute);\n  return { date, minutes, stamp: `${date} ${parts.hour}:${parts.minute}:${parts.second}` };\n}\n\n/** 'Tue,Wed,Thu' or 'Tue-Sat' or 'Mon-Fri,Sat' -> Set of day indexes */\nfunction parseWorkDays(v) {\n  const out = new Set();\n  const idx = (name) => DAY_NAMES.findIndex((d) => d.toLowerCase() === name.slice(0, 3).toLowerCase());\n  for (const chunk of str(v).split(',').map((c) => c.trim()).filter(Boolean)) {\n    const [a, b] = chunk.split('-').map((c) => c.trim());\n    const i = idx(a);\n    if (i < 0) continue;\n    if (!b) { out.add(i); continue; }\n    const j = idx(b);\n    if (j < 0) continue;\n    for (let k = i; ; k = (k + 1) % 7) { out.add(k); if (k === j) break; }\n  }\n  return out;\n}\n\nconst splitList = (v) => str(v).split(/[,;]/).map((s) => s.trim().toUpperCase()).filter(Boolean);\n\nconst money = (n) => `${CONFIG.currency} ${Number(n || 0).toLocaleString('en-US')}`;\n\nfunction randomCode(len = 4) {\n  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';\n  let s = '';\n  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];\n  return s;\n}\n\n// ------------------------------------------------------------ data access --\n\nfunction buildContext(data) {\n  const services = (data.services || [])\n    .filter((r) => str(r.service_id))\n    .map((r) => ({\n      id: str(r.service_id).toUpperCase(),\n      name: str(r.name),\n      category: str(r.category),\n      duration: Number(r.duration_min) || 30,\n      price: Number(r.price) || 0,\n      active: isActive(r.active),\n    }));\n\n  const staff = (data.staff || [])\n    .filter((r) => str(r.staff_id))\n    .map((r) => ({\n      id: str(r.staff_id).toUpperCase(),\n      name: str(r.name),\n      services: splitList(r.service_ids),\n      days: parseWorkDays(r.work_days),\n      daysLabel: str(r.work_days),\n      start: toMinutes(r.start_time),\n      end: toMinutes(r.end_time),\n      active: isActive(r.active),\n    }));\n\n  const appointments = (data.appointments || [])\n    .filter((r) => str(r.appointment_id))\n    .map((r) => ({\n      raw: r,\n      id: str(r.appointment_id).toUpperCase(),\n      phone: str(r.phone),\n      serviceId: str(r.service_id).toUpperCase(),\n      serviceName: str(r.service_name),\n      staffId: str(r.staff_id).toUpperCase(),\n      staffName: str(r.staff_name),\n      date: normDate(r.date),\n      start: toMinutes(r.start_time),\n      end: toMinutes(r.end_time),\n      price: Number(r.price) || 0,\n      status: str(r.status).toLowerCase(),\n    }));\n\n  const clients = (data.clients || []).filter((r) => str(r.phone));\n\n  return { services, staff, appointments, clients };\n}\n\n/** Lets the LLM pass either the ID ('S01') or (part of) the name ('haircut'). */\nfunction findByIdOrName(list, query) {\n  const q = str(query).toLowerCase();\n  if (!q) return null;\n  return (\n    list.find((x) => x.id.toLowerCase() === q) ||\n    list.find((x) => x.name.toLowerCase() === q) ||\n    list.find((x) => x.name.toLowerCase().includes(q)) ||\n    null\n  );\n}\n\nconst overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;\n\n/** Free start times for one stylist on one date. */\nfunction freeSlots(ctx, stylist, service, date, now) {\n  if (!stylist.days.has(dayIndex(date))) return [];\n  if (stylist.start === null || stylist.end === null) return [];\n  const busy = ctx.appointments.filter(\n    (a) => a.staffId === stylist.id && a.date === date && a.status === 'booked' && a.start !== null,\n  );\n  const earliest = date === now.date ? now.minutes + CONFIG.minLeadMin : -1;\n  const slots = [];\n  for (let t = stylist.start; t + service.duration <= stylist.end; t += CONFIG.slotStepMin) {\n    if (t < earliest) continue;\n    const end = t + service.duration;\n    if (busy.some((a) => overlaps(t, end, a.start, a.end ?? a.start + 30))) continue;\n    slots.push(t);\n  }\n  return slots;\n}\n\nfunction candidateStaff(ctx, service, staffQuery) {\n  let list = ctx.staff.filter((s) => s.active && s.services.includes(service.id));\n  if (str(staffQuery) && !['any', 'anyone', 'cualquiera', 'none'].includes(str(staffQuery).toLowerCase())) {\n    const wanted = findByIdOrName(list, staffQuery);\n    if (!wanted) return { error: `No active stylist matching \"${staffQuery}\" performs ${service.name}.`, list: [] };\n    list = [wanted];\n  }\n  return { list };\n}\n\nfunction validateDate(date, now) {\n  if (!date || !isRealDate(date)) return 'Invalid date. Use the format YYYY-MM-DD.';\n  if (date < now.date) return `That date is in the past (today is ${now.date}).`;\n  if (diffDays(now.date, date) > CONFIG.maxDaysAhead) return `Bookings open only ${CONFIG.maxDaysAhead} days ahead (until ${addDays(now.date, CONFIG.maxDaysAhead)}).`;\n  return null;\n}\n\nfunction findNextAvailable(ctx, service, staffList, fromDate, now) {\n  for (let i = 1; i <= CONFIG.nextAvailableSearchDays; i++) {\n    const d = addDays(fromDate, i);\n    if (diffDays(now.date, d) > CONFIG.maxDaysAhead) break;\n    for (const st of staffList) {\n      const slots = freeSlots(ctx, st, service, d, now);\n      if (slots.length) return { date: d, day: DAY_FULL[dayIndex(d)], staff_id: st.id, staff_name: st.name, first_slot: fmtTime(slots[0]) };\n    }\n  }\n  return null;\n}\n\nconst fail = (message, extra = {}) => ({ op: 'none', response: { ok: false, message, ...extra } });\n\n// ------------------------------------------------------------------ actions --\n\nfunction getServices(ctx) {\n  const services = ctx.services.filter((s) => s.active).map((s) => ({\n    service_id: s.id,\n    name: s.name,\n    category: s.category,\n    duration_min: s.duration,\n    price: money(s.price),\n    stylists: ctx.staff.filter((st) => st.active && st.services.includes(s.id)).map((st) => `${st.name} (${st.id})`),\n  }));\n  const stylists = ctx.staff.filter((s) => s.active).map((s) => ({\n    staff_id: s.id,\n    name: s.name,\n    works: `${s.daysLabel} ${fmtTime(s.start ?? 0)}-${fmtTime(s.end ?? 0)}`,\n  }));\n  return { op: 'none', response: { ok: true, services, stylists } };\n}\n\nfunction checkAvailability(ctx, input, now) {\n  const service = findByIdOrName(ctx.services.filter((s) => s.active), input.service_id);\n  if (!service) return fail(`Service \"${str(input.service_id)}\" not found. Call get_services to see valid IDs.`);\n  const date = normDate(input.date);\n  const dateError = validateDate(date, now);\n  if (dateError) return fail(dateError);\n\n  const { list, error } = candidateStaff(ctx, service, input.staff_id);\n  if (error) return fail(error);\n\n  const availability = list\n    .map((st) => {\n      const slots = freeSlots(ctx, st, service, date, now);\n      return { staff_id: st.id, staff_name: st.name, slots: slots.slice(0, CONFIG.maxSlotsShown).map(fmtTime), total_free: slots.length };\n    })\n    .filter((a) => a.total_free > 0);\n\n  const base = {\n    service: `${service.name} (${service.id}) - ${service.duration} min - ${money(service.price)}`,\n    date,\n    day: DAY_FULL[dayIndex(date)],\n  };\n  if (availability.length) return { op: 'none', response: { ok: true, ...base, availability } };\n\n  return {\n    op: 'none',\n    response: {\n      ok: true,\n      ...base,\n      availability: [],\n      message: 'No free slots on that date.',\n      next_available: findNextAvailable(ctx, service, list, date, now),\n    },\n  };\n}\n\nfunction createAppointment(ctx, input, now) {\n  const phone = str(input.phone);\n  if (!phone) return fail('Missing customer phone (internal error).');\n\n  const service = findByIdOrName(ctx.services.filter((s) => s.active), input.service_id);\n  if (!service) return fail(`Service \"${str(input.service_id)}\" not found. Call get_services to see valid IDs.`);\n  const date = normDate(input.date);\n  const dateError = validateDate(date, now);\n  if (dateError) return fail(dateError);\n  const start = toMinutes(input.time);\n  if (start === null) return fail('Invalid time. Use the 24h format HH:MM, e.g. 15:30.');\n\n  const { list, error } = candidateStaff(ctx, service, input.staff_id);\n  if (error) return fail(error);\n\n  const end = start + service.duration;\n\n  // Same customer, overlapping booked appointment -> refuse (prevents double booking by retries)\n  const clash = ctx.appointments.find(\n    (a) => a.phone === phone && a.date === date && a.status === 'booked' && overlaps(start, end, a.start, a.end ?? a.start + 30),\n  );\n  if (clash) {\n    return fail(`The customer already has ${clash.serviceName} with ${clash.staffName} at ${fmtTime(clash.start)} that day (code ${clash.id}).`);\n  }\n\n  const stylist = list.find((st) => freeSlots(ctx, st, service, date, now).includes(start));\n  if (!stylist) {\n    const alternatives = list\n      .map((st) => ({ staff_id: st.id, staff_name: st.name, slots: freeSlots(ctx, st, service, date, now).slice(0, 6).map(fmtTime) }))\n      .filter((a) => a.slots.length);\n    return fail(`${fmtTime(start)} is not available for ${service.name} on ${date}.`, {\n      alternatives,\n      next_available: alternatives.length ? null : findNextAvailable(ctx, service, list, date, now),\n    });\n  }\n\n  const existing = ctx.clients.find((c) => str(c.phone) === phone);\n  const clientName = str(input.client_name) || str(existing && existing.name) || str(input.profile_name) || 'Customer';\n  const id = `APT-${date.replace(/-/g, '').slice(2)}-${randomCode()}`;\n\n  const appointment_row = {\n    appointment_id: id,\n    phone,\n    client_name: clientName,\n    service_id: service.id,\n    service_name: service.name,\n    staff_id: stylist.id,\n    staff_name: stylist.name,\n    date,\n    start_time: fmtTime(start),\n    end_time: fmtTime(end),\n    price: service.price,\n    status: 'booked',\n    channel: 'whatsapp',\n    created_at: now.stamp,\n    updated_at: now.stamp,\n  };\n\n  const client_row = {\n    phone,\n    name: clientName,\n    created_at: str(existing && existing.created_at) || now.stamp,\n    last_booking_at: now.stamp,\n    total_bookings: (Number(existing && existing.total_bookings) || 0) + 1,\n  };\n\n  return {\n    op: 'create',\n    appointment_row,\n    client_row,\n    response: {\n      ok: true,\n      message: 'Appointment booked.',\n      appointment: {\n        code: id,\n        service: service.name,\n        stylist: stylist.name,\n        date,\n        day: DAY_FULL[dayIndex(date)],\n        time: `${fmtTime(start)}-${fmtTime(end)}`,\n        price: money(service.price),\n        client_name: clientName,\n      },\n    },\n  };\n}\n\nfunction listAppointments(ctx, input, now) {\n  const phone = str(input.phone);\n  const upcoming = ctx.appointments\n    .filter((a) => a.phone === phone && a.status === 'booked' && a.date && (a.date > now.date || (a.date === now.date && a.start >= now.minutes)))\n    .sort((a, b) => (a.date + fmtTime(a.start)).localeCompare(b.date + fmtTime(b.start)))\n    .map((a) => ({\n      code: a.id,\n      service: a.serviceName,\n      stylist: a.staffName,\n      date: a.date,\n      day: DAY_FULL[dayIndex(a.date)],\n      time: `${fmtTime(a.start)}-${fmtTime(a.end ?? a.start)}`,\n      price: money(a.price),\n    }));\n  return {\n    op: 'none',\n    response: { ok: true, appointments: upcoming, message: upcoming.length ? undefined : 'The customer has no upcoming appointments.' },\n  };\n}\n\nfunction cancelAppointment(ctx, input, now) {\n  const phone = str(input.phone);\n  const code = str(input.appointment_id).toUpperCase();\n  const appt = ctx.appointments.find((a) => a.id === code);\n\n  // Same message whether it doesn't exist or belongs to someone else: no data leaks.\n  if (!appt || appt.phone !== phone) return fail(`No appointment with code ${code} was found for this customer. Use list_my_appointments.`);\n  if (appt.status !== 'booked') return fail(`Appointment ${code} is already ${appt.status}.`);\n\n  const minutesUntil = diffDays(now.date, appt.date) * 1440 + (appt.start - now.minutes);\n  if (minutesUntil < 0) return fail(`Appointment ${code} has already started or passed.`);\n  if (minutesUntil < CONFIG.cancelMinHoursBefore * 60) {\n    return fail(`Appointments can only be cancelled up to ${CONFIG.cancelMinHoursBefore} hours in advance. Ask the customer to call the salon.`);\n  }\n\n  return {\n    op: 'cancel',\n    update_row: { appointment_id: appt.id, status: 'cancelled', updated_at: now.stamp },\n    response: {\n      ok: true,\n      message: 'Appointment cancelled.',\n      cancelled: { code: appt.id, service: appt.serviceName, stylist: appt.staffName, date: appt.date, time: fmtTime(appt.start) },\n    },\n  };\n}\n\n// --------------------------------------------------------------- dispatcher --\n\nfunction runBookingEngine(input, data, at = new Date()) {\n  const now = nowInZone(CONFIG.timezone, at);\n  const ctx = buildContext(data);\n  const action = str(input.action);\n  try {\n    switch (action) {\n      case 'get_services': return getServices(ctx);\n      case 'check_availability': return checkAvailability(ctx, input, now);\n      case 'create_appointment': return createAppointment(ctx, input, now);\n      case 'list_my_appointments': return listAppointments(ctx, input, now);\n      case 'cancel_appointment': return cancelAppointment(ctx, input, now);\n      default: return fail(`Unknown action \"${action}\".`);\n    }\n  } catch (err) {\n    return fail(`Internal error: ${err.message}`);\n  }\n}\n\n// Export for Node tests; ignored inside the n8n Code node.\nif (typeof module !== 'undefined' && module.exports) {\n  module.exports = { runBookingEngine, CONFIG, _internals: { normDate, toMinutes, parseWorkDays, nowInZone, addDays, fmtTime } };\n}\n\n\n// ============================== n8n adapter ==============================\n// Reads the rows loaded by the Google Sheets nodes and runs the engine once.\nconst rows = (nodeName) => $(nodeName).all().map((i) => i.json).filter((r) => r && Object.keys(r).length > 0);\nconst input = $('When Called by Agent').first().json;\n\nconst result = runBookingEngine(input, {\n  services: rows('Read Services'),\n  staff: rows('Read Staff'),\n  appointments: rows('Read Appointments'),\n  clients: rows('Read Clients'),\n});\n\nreturn [{ json: result }];\n"
+      },
+      "id": "cc8bc913-dc17-475a-88ac-7357dc0e7043",
+      "name": "Booking Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "aed625b9-93c1-4bf2-a87b-4ea3b0c3c71c",
+                    "leftValue": "={{ $json.op }}",
+                    "rightValue": "create",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Create"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0189b32d-a13c-456d-a906-ee6da9bf86f2",
+                    "leftValue": "={{ $json.op }}",
+                    "rightValue": "cancel",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancel"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "No write"
+        }
+      },
+      "id": "398fb00b-a0ae-4702-814e-b8f3d1ca52e5",
+      "name": "Route Write",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1104,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.appointment_row }];"
+      },
+      "id": "2ccb2944-aa42-46f9-9e46-e7d622e51b85",
+      "name": "Appointment Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Appointments",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "4904f7b9-0113-4f4a-930a-23b9bcda3f9d",
+      "name": "Save Appointment",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1568,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $('Booking Engine').first().json.client_row }];"
+      },
+      "id": "e7db4bd8-82b3-4f8d-a0c0-1ed66d23ece8",
+      "name": "Client Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Clients",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "phone"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "9ec1a355-0e79-4194-9648-5e397da647ef",
+      "name": "Upsert Client",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1888,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.update_row }];"
+      },
+      "id": "62fc2732-b99e-4c0a-a61a-c9b20d634b34",
+      "name": "Cancellation Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Appointments",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "appointment_id"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "5181555e-3e78-4d99-b8f4-db95f7f81804",
+      "name": "Mark as Cancelled",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1744,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PXVaUZJOilby5h6r",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Whatever this node outputs is what the AI agent receives from the tool.\nreturn [{ json: $('Booking Engine').first().json.response }];"
+      },
+      "id": "28248c99-28b6-4a89-a814-46781b66f5b3",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        416
+      ]
+    }
+  ],
+  "pinData": {
+    "When Called by Agent": [
+      {
+        "json": {
+          "action": "check_availability",
+          "phone": "5492231112233",
+          "profile_name": "Test User",
+          "client_name": "",
+          "service_id": "S01",
+          "staff_id": "",
+          "date": "2026-11-10",
+          "time": "",
+          "appointment_id": ""
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Called by Agent": {
+      "main": [
+        [
+          {
+            "node": "Read Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Services": {
+      "main": [
+        [
+          {
+            "node": "Read Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Staff": {
+      "main": [
+        [
+          {
+            "node": "Read Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Appointments": {
+      "main": [
+        [
+          {
+            "node": "Read Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients": {
+      "main": [
+        [
+          {
+            "node": "Booking Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Engine": {
+      "main": [
+        [
+          {
+            "node": "Route Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Write": {
+      "main": [
+        [
+          {
+            "node": "Appointment Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancellation Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Appointment Row": {
+      "main": [
+        [
+          {
+            "node": "Save Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Appointment": {
+      "main": [
+        [
+          {
+            "node": "Client Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Row": {
+      "main": [
+        [
+          {
+            "node": "Upsert Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Client": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancellation Row": {
+      "main": [
+        [
+          {
+            "node": "Mark as Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "75d0e99d-4268-4a63-9de1-0b70c7b2ec5f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f263d66ceca6abe4f7ebcc13192b176fdae2e3c203d702f3b107110bbe803f2d"
+  },
+  "nodeGroups": [],
+  "id": "w5pmOqAY998smkPR",
+  "tags": []
+}

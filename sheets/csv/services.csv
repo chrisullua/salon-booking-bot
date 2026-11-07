@@ -1,0 +1,9 @@
+service_id,name,category,duration_min,price,active
+S01,Women's Haircut,Hair,45,18000,TRUE
+S02,Men's Haircut,Hair,30,12000,TRUE
+S03,Blow-dry & Styling,Hair,30,10000,TRUE
+S04,Root Color Touch-up,Color,90,35000,TRUE
+S05,Balayage,Color,180,85000,TRUE
+S06,Gel Manicure,Nails,60,15000,TRUE
+S07,Spa Pedicure,Nails,60,16000,TRUE
+S08,Brow Design,Brows,30,8000,TRUE

@@ -1,0 +1,4 @@
+staff_id,name,service_ids,work_days,start_time,end_time,active
+ST01,Sofia Herrera,"S01,S03,S04,S05",Tue-Sat,10:00,19:00,TRUE
+ST02,Lucas Mendez,"S01,S02,S03",Mon-Fri,09:00,18:00,TRUE
+ST03,Valentina Rios,"S06,S07,S08",Tue-Sat,09:00,17:00,TRUE
