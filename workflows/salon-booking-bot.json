@@ -1,35 +1,35 @@
 {
-  "name": "Salon Booking Bot",
+  "name": "Salon Booking Bot | v2",
   "nodes": [
     {
       "parameters": {
         "content": "## Salon Booking Bot (WhatsApp + Gemini)\n**Flow:** WhatsApp message -> normalize -> AI agent (Gemini + memory + 5 tools) -> reply on WhatsApp -> log to Google Sheets.\n\nThe agent never touches the sheet directly: every read/write goes through the **Salon Booking - Tools** sub-workflow, where the business rules live.\n\nThe customer phone is injected by the workflow (not chosen by the AI), so a customer can only see or cancel their own appointments.",
         "height": 260,
-        "width": 672,
+        "width": 560,
         "color": 5
       },
-      "id": "cb93c0e5-e055-4711-af4b-c079a63ad459",
+      "id": "4d34502f-87b6-44ad-9e10-b8cfd50c46fd",
       "name": "Note: Overview",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        128,
-        80
+        -352,
+        32
       ]
     },
     {
       "parameters": {
         "content": "### Agent tools\nEach tool calls the same sub-workflow with a fixed `action`. Fields using `$fromAI()` are filled in by Gemini; `phone` comes from the webhook.",
         "height": 120,
-        "width": 728,
+        "width": 760,
         "color": 7
       },
-      "id": "2eec4670-5c37-4897-902b-88cc2a4aec70",
+      "id": "01546e91-ce14-4a5c-ab68-126998435ab9",
       "name": "Note: Tools",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        848,
+        768,
         896
       ]
     },
@@ -42,67 +42,21 @@
           "messageStatusUpdates": []
         }
       },
-      "id": "a5472a4e-705b-4409-bd1f-7b45c0a7ba68",
+      "id": "a82ef979-e1c9-41e5-8d91-d4de40448ee9",
       "name": "WhatsApp Trigger",
       "type": "n8n-nodes-base.whatsAppTrigger",
       "typeVersion": 1,
       "position": [
-        160,
-        416
+        -320,
+        448
       ],
-      "webhookId": "1cb7a5a7-1f7b-4df4-9e5a-34d50c7aa2e4",
+      "webhookId": "ef1f7310-96a0-4b49-8b91-710adb86fbae",
       "credentials": {
         "whatsAppTriggerApi": {
           "id": "F3NxCgKrwfO0e27b",
           "name": "WhatsApp OAuth account"
         }
       }
-    },
-    {
-      "parameters": {
-        "jsCode": "/**\n * Normalize Message (n8n Code node, \"Run Once for All Items\")\n * ---------------------------------------------------------------------------\n * Turns the raw WhatsApp Cloud API webhook payload into one clean item.\n * Status callbacks (sent / delivered / read) have no `messages` array and are\n * dropped here by returning an empty list, which ends the execution quietly.\n */\n\n// Argentina quirk: inbound numbers arrive as 549 + area + number, but the\n// Cloud API (especially the test allow-list) expects 54 + area + number.\n// Set to false if your replies fail with \"recipient not in allowed list\".\nconst STRIP_AR_MOBILE_9 = true;\n\nconst raw = $input.first().json;\nconst value = raw.messages ? raw : raw.entry?.[0]?.changes?.[0]?.value ?? raw.body?.entry?.[0]?.changes?.[0]?.value ?? {};\nconst msg = value.messages?.[0];\n\nif (!msg) return [];\n\nconst from = String(msg.from);\nconst replyTo = STRIP_AR_MOBILE_9 && /^549\\d{10}$/.test(from) ? '54' + from.slice(3) : from;\n\nlet text = '';\nif (msg.type === 'text') text = msg.text?.body ?? '';\nelse if (msg.type === 'interactive') text = msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title ?? '';\nelse if (msg.type === 'button') text = msg.button?.text ?? '';\n\nreturn [{\n  json: {\n    phone: from,\n    reply_to: replyTo,\n    profile_name: value.contacts?.[0]?.profile?.name ?? '',\n    type: text ? 'text' : msg.type,\n    text: text.trim().slice(0, 1000),\n    message_id: msg.id,\n    phone_number_id: value.metadata?.phone_number_id,\n  },\n}];\n"
-      },
-      "id": "e8a67079-a35c-426d-8cba-94951e3157e9",
-      "name": "Normalize Message",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        336,
-        416
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "e36ed687-4e84-40e3-a471-b96abdc37ac8",
-              "leftValue": "={{ $json.type }}",
-              "rightValue": "text",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "90e055af-b6b4-423d-aac5-417dcbee69db",
-      "name": "Is Text?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        496,
-        416
-      ]
     },
     {
       "parameters": {
@@ -113,13 +67,13 @@
           "maxIterations": 10
         }
       },
-      "id": "160998f3-3f27-4f7b-8239-e9e88f829b78",
+      "id": "5e0418d0-9887-461e-9619-34851aa4363c",
       "name": "Salon Assistant",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
       "position": [
-        720,
-        400
+        528,
+        448
       ],
       "retryOnFail": true,
       "onError": "continueErrorOutput"
@@ -130,13 +84,13 @@
           "temperature": 0.3
         }
       },
-      "id": "c2ef3d05-7b69-4f9c-a53e-93cbc392f6a9",
+      "id": "991adf45-ed40-46b8-9000-79b38ce1b5d1",
       "name": "Gemini Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        720,
-        688
+        528,
+        640
       ],
       "credentials": {
         "googlePalmApi": {
@@ -151,13 +105,13 @@
         "sessionKey": "={{ $('Normalize Message').first().json.phone }}",
         "contextWindowLength": 12
       },
-      "id": "136b0e6b-d515-40e5-af0c-a95c18d6bcc8",
+      "id": "8fd504d1-8f5a-4fd9-a14c-63c5651ee99b",
       "name": "Conversation Memory",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        816,
-        576
+        624,
+        784
       ]
     },
     {
@@ -166,7 +120,7 @@
         "description": "Returns the salon catalog: services (ID, name, duration, price) and which stylists perform each one, plus stylists working days and hours. Call it before quoting any price or service.",
         "workflowId": {
           "__rl": true,
-          "value": "w5pmOqAY998smkPR",
+          "value": "REPLACE_WITH_TOOLS_WORKFLOW_ID",
           "mode": "id"
         },
         "workflowInputs": {
@@ -271,13 +225,13 @@
           "convertFieldsToString": false
         }
       },
-      "id": "b9327e00-a33c-456b-b62e-824b9fa5b810",
+      "id": "6f6777f5-38b0-4832-903b-87c0e824a915",
       "name": "get_services",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2,
       "position": [
-        864,
-        768
+        784,
+        752
       ]
     },
     {
@@ -286,7 +240,7 @@
         "description": "Returns free start times for a service on a given date, grouped by stylist. If the day is full or closed, it suggests the next available date.",
         "workflowId": {
           "__rl": true,
-          "value": "w5pmOqAY998smkPR",
+          "value": "REPLACE_WITH_TOOLS_WORKFLOW_ID",
           "mode": "id"
         },
         "workflowInputs": {
@@ -394,13 +348,13 @@
           "convertFieldsToString": false
         }
       },
-      "id": "e2a9926a-e369-4ad9-b9ae-8eab5e340d16",
+      "id": "355190cd-88a1-46e4-8944-b2945d59b264",
       "name": "check_availability",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2,
       "position": [
-        992,
-        768
+        912,
+        752
       ]
     },
     {
@@ -409,7 +363,7 @@
         "description": "Books an appointment. Only call it after the customer explicitly confirmed service, date and time. Returns the appointment code.",
         "workflowId": {
           "__rl": true,
-          "value": "w5pmOqAY998smkPR",
+          "value": "REPLACE_WITH_TOOLS_WORKFLOW_ID",
           "mode": "id"
         },
         "workflowInputs": {
@@ -521,13 +475,13 @@
           "convertFieldsToString": false
         }
       },
-      "id": "a2242a87-47ac-4edd-83d2-9c3c93cdc10f",
+      "id": "62a932be-b000-42eb-b4f9-e48af28a140d",
       "name": "create_appointment",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2,
       "position": [
-        1136,
-        768
+        1056,
+        752
       ]
     },
     {
@@ -536,7 +490,7 @@
         "description": "Lists the upcoming booked appointments of the customer you are chatting with (codes, services, dates, times).",
         "workflowId": {
           "__rl": true,
-          "value": "w5pmOqAY998smkPR",
+          "value": "REPLACE_WITH_TOOLS_WORKFLOW_ID",
           "mode": "id"
         },
         "workflowInputs": {
@@ -642,13 +596,13 @@
           "convertFieldsToString": false
         }
       },
-      "id": "97c689c2-915f-4d45-8914-1318e47785a4",
+      "id": "948fac7e-18e9-49ed-94c1-ff1eb7cccb81",
       "name": "list_my_appointments",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2,
       "position": [
-        1296,
-        768
+        1216,
+        752
       ]
     },
     {
@@ -657,7 +611,7 @@
         "description": "Cancels one of the customer's upcoming appointments by its code (APT-...). Confirm with the customer before calling it.",
         "workflowId": {
           "__rl": true,
-          "value": "w5pmOqAY998smkPR",
+          "value": "REPLACE_WITH_TOOLS_WORKFLOW_ID",
           "mode": "id"
         },
         "workflowInputs": {
@@ -764,32 +718,32 @@
           "convertFieldsToString": false
         }
       },
-      "id": "3e68fe8c-07de-472a-a7e0-37a6fa76874a",
+      "id": "e65a4e3c-cb37-4400-9376-76a0155014bb",
       "name": "cancel_appointment",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2,
       "position": [
-        1456,
-        768
+        1376,
+        752
       ]
     },
     {
       "parameters": {
         "operation": "send",
         "phoneNumberId": "={{ $('Normalize Message').first().json.phone_number_id }}",
-        "recipientPhoneNumber": "={{ $('Normalize Message').first().json.reply_to }}",
+        "recipientPhoneNumber": "={{ $('Normalize Message').item.json.replay_to }}",
         "textBody": "={{ $json.output }}",
         "additionalFields": {}
       },
-      "id": "c07e7dcd-71e5-42a8-8338-3bbd66236c0a",
+      "id": "495f13cb-fd6d-4164-aca1-b1c21f1abd60",
       "name": "Send Reply",
       "type": "n8n-nodes-base.whatsApp",
       "typeVersion": 1,
       "position": [
-        1120,
-        288
+        976,
+        304
       ],
-      "webhookId": "739b6e70-edd0-4e0a-b6f6-718a070af786",
+      "webhookId": "3737926f-0790-4212-bf88-9a58b0dc84fb",
       "credentials": {
         "whatsAppApi": {
           "id": "avys4oklSXshBEAV",
@@ -828,7 +782,7 @@
             {
               "id": "79d76355-cabb-43f7-a92d-e410b68e776d",
               "name": "incoming_text",
-              "value": "={{ $('Normalize Message').first().json.text }}",
+              "value": "={{ $('Transcribe audio').isExecuted ? $('Transcribe audio').first().json.text : $('Normalize Message').first().json.text }}",
               "type": "string"
             },
             {
@@ -841,13 +795,13 @@
         },
         "options": {}
       },
-      "id": "335eea82-7787-492e-b132-49cfa8e2c3be",
+      "id": "a6b64e9f-e8ea-4a21-bb7f-056bcd8b5308",
       "name": "Build Log Row",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1296,
-        288
+        1152,
+        304
       ]
     },
     {
@@ -855,7 +809,7 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -873,13 +827,13 @@
           "cellFormat": "RAW"
         }
       },
-      "id": "a1e53142-e18e-4019-8d2d-16a9bc56c0c2",
+      "id": "1b97b195-1134-4210-90f6-78ae7c6446c8",
       "name": "Log Conversation",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1440,
-        288
+        1328,
+        304
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -892,19 +846,19 @@
       "parameters": {
         "operation": "send",
         "phoneNumberId": "={{ $('Normalize Message').first().json.phone_number_id }}",
-        "recipientPhoneNumber": "={{ $('Normalize Message').first().json.reply_to }}",
+        "recipientPhoneNumber": "={{ $('Normalize Message').item.json.replay_to }}",
         "textBody": "Sorry, I had a technical problem. Please try again in a minute or call us at +54 223 000-0000. / Perdón, tuve un problema técnico. Probá de nuevo en un minuto o llamanos al +54 223 000-0000.",
         "additionalFields": {}
       },
-      "id": "f33c2b4f-8d08-4c87-97de-a4a5c9d1ab90",
+      "id": "149c20d0-6300-4996-a6cd-841912073ce0",
       "name": "Reply Fallback",
       "type": "n8n-nodes-base.whatsApp",
       "typeVersion": 1,
       "position": [
-        1120,
+        976,
         464
       ],
-      "webhookId": "0de133c6-8c3f-4bb2-a1d9-62302d543781",
+      "webhookId": "fdde109f-4522-4cce-929f-5b65de355674",
       "credentials": {
         "whatsAppApi": {
           "id": "avys4oklSXshBEAV",
@@ -914,27 +868,185 @@
     },
     {
       "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "af8f1320-96b7-4ed9-8b2f-d73eb97b4aa8",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "373bea1e-8794-423c-bc39-8bd367c5df72"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        48,
+        432
+      ],
+      "id": "b11d7714-9363-4253-991a-03cefabe9009",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
         "operation": "send",
         "phoneNumberId": "={{ $('Normalize Message').first().json.phone_number_id }}",
-        "recipientPhoneNumber": "={{ $('Normalize Message').first().json.reply_to }}",
-        "textBody": "For now I can only read text messages 🙏 Please write your question. / Por ahora solo puedo leer mensajes de texto 🙏 Escribime tu consulta.",
+        "recipientPhoneNumber": "={{ $('Normalize Message').item.json.replay_to }}",
+        "textBody": "For now I can only accept audio or text messages 🙏 Please respond using a valid format. / Por ahora solo puedo aceptar mensajes de audio o texto 🙏 Porfavor respondé usando un formato valido. ",
         "additionalFields": {}
       },
-      "id": "1849c888-ec83-4f42-87a8-965ee5e77b75",
+      "id": "2f62fc68-89f0-4140-9949-adcca634fc8e",
       "name": "Reply Unsupported",
       "type": "n8n-nodes-base.whatsApp",
       "typeVersion": 1,
       "position": [
-        480,
-        656
+        48,
+        704
       ],
-      "webhookId": "520092f2-d495-4b7e-bbee-8cca677a70ef",
+      "webhookId": "fdde109f-4522-4cce-929f-5b65de355674",
       "credentials": {
         "whatsAppApi": {
           "id": "avys4oklSXshBEAV",
           "name": "WhatsApp account"
         }
       }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2e174ed-6ed6-4174-ac84-4352469b26cc",
+              "name": "phone",
+              "value": "={{ $json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "71df023d-8807-495a-8eb1-fef0f5ecdee6",
+              "name": "replay_to",
+              "value": "={{ $json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ee224789-6a1b-47c0-b538-9df087232450",
+              "name": "profile_name",
+              "value": "={{ $json.contacts[0].profile.name }}",
+              "type": "string"
+            },
+            {
+              "id": "12e3e943-c381-4c70-ab8a-3f24f501c5a9",
+              "name": "type",
+              "value": "={{ $json.messages[0].type }}",
+              "type": "string"
+            },
+            {
+              "id": "33650a42-c9e9-478f-8f0b-86f05382882a",
+              "name": "text",
+              "value": "={{ $json.messages[0].text.body || null }}",
+              "type": "string"
+            },
+            {
+              "id": "2bde78b0-b28a-468b-bdb0-2c8666ffc710",
+              "name": "message_id",
+              "value": "={{ $json.messages[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "3b2eabde-7176-466f-811b-2be27ad51abf",
+              "name": "phone_number_id",
+              "value": "={{ $json.metadata.phone_number_id }}",
+              "type": "string"
+            },
+            {
+              "id": "7a35e7dc-b9db-4f99-8542-84fbf57bfe5c",
+              "name": "audio_id",
+              "value": "={{ $json.messages[0].audio.id || null }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -144,
+        448
+      ],
+      "id": "9fe5e7b9-0757-4a04-b73e-7237f1e6552a",
+      "name": "Normalize Message"
+    },
+    {
+      "parameters": {
+         "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_TRANSCRIBE_WORKFLOW_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        288,
+        336
+      ],
+      "id": "4ca45480-6572-4a7a-a94b-6aadac6b1ae6",
+      "name": "Transcribe audio"
     }
   ],
   "pinData": {},
@@ -944,35 +1056,6 @@
         [
           {
             "node": "Normalize Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Normalize Message": {
-      "main": [
-        [
-          {
-            "node": "Is Text?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Text?": {
-      "main": [
-        [
-          {
-            "node": "Salon Assistant",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Reply Unsupported",
             "type": "main",
             "index": 0
           }
@@ -1095,6 +1178,53 @@
           }
         ]
       ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Transcribe audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salon Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Unsupported",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Message": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe audio": {
+      "main": [
+        [
+          {
+            "node": "Salon Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -1102,12 +1232,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "82aad723-55f6-4df1-b32e-ce4cd8ed4dad",
+  "versionId": "1d4975d9-b030-4eb1-bb1e-69a54437f6c1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "f263d66ceca6abe4f7ebcc13192b176fdae2e3c203d702f3b107110bbe803f2d"
   },
   "nodeGroups": [],
-  "id": "uoVAeUpBFQlc0tPe",
+  "id": "iAcvFW9t88d0QDbN",
   "tags": []
 }

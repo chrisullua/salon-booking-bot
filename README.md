@@ -2,7 +2,7 @@
 
 An AI receptionist for a beauty salon that books, lists and cancels appointments over **WhatsApp**, built with **n8n**, **Google Gemini** and **Google Sheets** as the database.
 
-Customers write in plain language (*"Do you have something for a haircut next Tuesday afternoon?"*). The assistant checks real availability, confirms the details, saves the booking and replies with an appointment code. It answers in the customer's language (Spanish or English).
+Customers write or send a **voice note** in plain language (*"Do you have something for a haircut next Tuesday afternoon?"*). The assistant checks real availability, confirms the details, saves the booking and replies with an appointment code. It answers in the customer's language (Spanish or English).
 
 > Glow Studio is a fictional business. All names, phone numbers and data in this repo are made up.
 
@@ -13,6 +13,7 @@ Customers write in plain language (*"Do you have something for a haircut next Tu
 ## Features
 
 - **Natural-language booking** with a Gemini-powered AI agent and per-customer conversation memory
+- **Voice notes supported**: audio messages are downloaded from WhatsApp, transcribed with Gemini and handled exactly like text
 - **Real availability engine**: stylist schedules, working days, service durations, overlap detection, minimum lead time, booking window
 - **Self-service**: customers can list and cancel their own appointments
 - **Business rules enforced in code, not in the prompt**: the AI can't book a taken slot, book in the past, or cancel someone else's appointment
@@ -22,12 +23,50 @@ Customers write in plain language (*"Do you have something for a haircut next Tu
 
 ## Architecture
 
-![Main Workflow](./assets/wf-n8n-image.png)
-![Sub workflow](./assets/swf1-n8n-image.png)
+![Main Workflow](./assets/wf-principal.png)
+![Tools sub-workflow](./assets/persistencia-tools.png)
+![Transcribe audio sub-workflow](./assets/audios-transcription.png)
 
-**Why two workflows?** The AI agent decides *what* to do; the tools sub-workflow decides *whether it's allowed* and does the reads and writes. Every tool call goes through the same deterministic **Booking Engine**, so business rules can't be bypassed by an unexpected answer from the model.
+```text
+WhatsApp Trigger
+   └─> Normalize Message (Set)
+          └─> Switch on message type
+                 ├─ text  ───────────────────────────────┐
+                 ├─ audio ─> Transcribe audio (sub-wf) ──┤
+                 │                                        └─> Salon Assistant (Gemini + memory + 5 tools)
+                 │                                               ├─ ok    ─> Send Reply ─> Build Log Row ─> Log Conversation
+                 │                                               └─ error ─> Reply Fallback
+                 └─ other (image, sticker, location…) ─> Reply Unsupported
+```
+
+The project is split into **three workflows**:
+
+| Workflow | Role |
+|---|---|
+| **Salon Booking Bot** | Receives WhatsApp messages, routes them by type, runs the AI agent and sends the reply. |
+| **Transcribe audio** | Downloads a voice note from the WhatsApp Media API, transcribes it with Gemini and returns the same message shape as a text message. |
+| **Salon Booking - Tools** | The only workflow that touches the database. Every agent tool goes through its **Booking Engine**. |
+
+**Why separate the tools?** The AI agent decides *what* to do; the tools sub-workflow decides *whether it's allowed* and does the reads and writes. Every tool call goes through the same deterministic **Booking Engine**, so business rules can't be bypassed by an unexpected answer from the model.
+
+**Why a separate audio sub-workflow?** It returns exactly the same fields as a text message, with the transcription in `text`. The agent doesn't know (or care) whether the customer typed or spoke, so there is only one agent, one prompt and one set of tools to maintain. New input types (e.g. images) can be added the same way: one more Switch output and one more sub-workflow.
 
 **Security detail:** the customer's phone number is injected by the workflow from the WhatsApp webhook, never chosen by the AI. A customer can only see or cancel their own appointments, even if they ask the bot for someone else's.
+
+### Message format
+
+`Normalize Message` turns the raw webhook payload into a flat object. Both the text branch and the audio branch deliver this same shape to the agent:
+
+| Field | Source | Notes |
+|---|---|---|
+| `phone` | `contacts[0].wa_id` | Customer identity: used for memory, tools and the log. |
+| `replay_to` | `contacts[0].wa_id` | Recipient of the reply. Kept separate from `phone` so it can be reformatted without changing the customer's identity (see Troubleshooting). |
+| `profile_name` | `contacts[0].profile.name` | WhatsApp display name. |
+| `type` | `messages[0].type` | `text`, `audio`, `image`, … Drives the Switch. |
+| `text` | `messages[0].text.body` | `null` for audio. Filled with the transcription by **Transcribe audio**. |
+| `message_id` | `messages[0].id` | |
+| `phone_number_id` | `metadata.phone_number_id` | Your WhatsApp business number, used to send the reply. |
+| `audio_id` | `messages[0].audio.id` | Media ID used to download the voice note. `null` for any non-audio message. |
 
 ### Agent tools
 
@@ -49,7 +88,7 @@ One spreadsheet with five tabs. Tab names and header names must match exactly.
 | **Staff** | `staff_id`, `name`, `service_ids`, `work_days`, `start_time`, `end_time`, `active` | Stylists. `service_ids` like `S01,S03`; `work_days` like `Tue-Sat` or `Mon,Wed,Fri`. |
 | **Clients** | `phone`, `name`, `created_at`, `last_booking_at`, `total_bookings` | One row per customer, upserted on each booking. |
 | **Appointments** | `appointment_id`, `phone`, `client_name`, `service_id`, `service_name`, `staff_id`, `staff_name`, `date`, `start_time`, `end_time`, `price`, `status`, `channel`, `created_at`, `updated_at` | Bookings. `status`: `booked`, `cancelled`, `completed`, `no_show`. |
-| **MessageLog** | `timestamp`, `phone`, `profile_name`, `message_type`, `incoming_text`, `bot_reply` | Every handled message and the bot's reply. |
+| **MessageLog** | `timestamp`, `phone`, `profile_name`, `message_type`, `incoming_text`, `bot_reply` | Every handled message and the bot's reply. `message_type` is `text` or `audio`; for voice notes, `incoming_text` holds the transcription. |
 
 `Appointments` is intentionally **denormalized** (it stores service and stylist names, not just IDs). Staff can read it without lookups, and it plugs straight into Looker Studio or a pivot table.
 
@@ -70,24 +109,25 @@ Configured at the top of [`src/booking-engine.js`](src/booking-engine.js):
 ## Repository structure
 
 ```text
+├── assets/                         # Workflow screenshots used in this README
 ├── workflows/
-│   ├── salon-booking-bot.json      # Main workflow: WhatsApp + AI agent (import into n8n)
+│   ├── salon-booking-bot.json      # Main workflow: WhatsApp + routing + AI agent (import into n8n)
+│   ├── transcribe-audio.json       # Sub-workflow: download + transcribe voice notes (import into n8n)
 │   └── salon-booking-tools.json    # Sub-workflow: booking engine + Google Sheets (import into n8n)
 ├── sheets/
 │   ├── salon-booking-db-template.xlsx   # Database template with sample data
 │   └── csv/                              # Same data as CSV, one file per tab
 ├── src/
 │   ├── booking-engine.js           # Business logic (embedded into the "Booking Engine" Code node)
-│   ├── normalize-message.js        # Webhook parsing (embedded into "Normalize Message")
 │   └── system-prompt.md            # AI agent instructions
 ├── scripts/
-│   ├── build-workflows.js          # Regenerates /workflows from /src
+│   ├── build-workflows.js          # Re-embeds src/booking-engine.js into salon-booking-tools.json
 │   └── generate-sample-data.py     # Regenerates the sample spreadsheet
 └── tests/
     └── booking-engine.test.js      # Unit tests (Node built-in test runner)
 ```
 
-The JSON files in `/workflows` are **generated**. To change the logic, edit `/src`, run `npm run build`, and re-import.
+The booking logic lives in `/src` and is embedded into the **Booking Engine** node of `salon-booking-tools.json`. To change it, edit `src/booking-engine.js`, run `npm run build`, and re-import the tools workflow. `salon-booking-bot.json` and `transcribe-audio.json` are exported directly from n8n.
 
 ---
 
@@ -97,7 +137,7 @@ The JSON files in `/workflows` are **generated**. To change the logic, edit `/sr
 
 - n8n running locally (Docker or npm), version 1.80 or newer recommended
 - A Meta developer app with **WhatsApp Cloud API** and a test phone number
-- A **Google Gemini API key** ([Google AI Studio](https://aistudio.google.com/))
+- A **Google Gemini API key** ([Google AI Studio](https://aistudio.google.com/)), used for both chat and audio transcription
 - A Google account for Sheets
 - [ngrok](https://ngrok.com/) to expose your local n8n to Meta's webhooks
 
@@ -117,10 +157,26 @@ The JSON files in `/workflows` are **generated**. To change the logic, edit `/sr
    `http://localhost:5678/workflow/`**`THIS_IS_THE_WORKFLOW_ID`**
 5. Click **Test workflow**. The trigger has pinned sample input (`check_availability` for a haircut). **Return Result** should show free slots.
 
-### 3. Import the main bot workflow
+### 3. Import the audio sub-workflow
+
+1. Import `workflows/transcribe-audio.json` the same way.
+2. Select credentials:
+
+   | Node | Credential type |
+   |---|---|
+   | Download media | WhatsApp API (Access Token + Business Account ID) |
+   | HTTP Request | WhatsApp API (*Authentication → Predefined Credential Type*) |
+   | Transcribe a recording | Google Gemini (PaLM) API |
+
+3. **Save** and copy this workflow's ID from the URL, as in step 2.4.
+
+How it works: **Download media** asks the WhatsApp API for a temporary URL for the `audio_id`, **HTTP Request** downloads the file (the URL requires your WhatsApp token), **Transcribe a recording** sends the audio to Gemini, and **Set response** returns the original message fields with `text` set to the transcription.
+
+### 4. Import the main bot workflow
 
 1. Open `workflows/salon-booking-bot.json` in a text editor and replace:
    - `REPLACE_WITH_TOOLS_WORKFLOW_ID` (5 times) → the workflow ID from step 2.4
+   - `REPLACE_WITH_TRANSCRIBE_WORKFLOW_ID` (once) → the workflow ID from step 3.3
    - `REPLACE_WITH_YOUR_SPREADSHEET_ID` (once) → your spreadsheet ID
 2. Import it the same way.
 3. Select credentials:
@@ -132,9 +188,9 @@ The JSON files in `/workflows` are **generated**. To change the logic, edit `/sr
    | Gemini Chat Model | Google Gemini (PaLM) API |
    | Log Conversation | Google Sheets |
 
-4. In **Gemini Chat Model**, check the model. The default is `gemini-2.5-flash`; if it isn't listed, pick the newest *Flash* model from the dropdown (fast and cheap is ideal for chat).
+4. In **Gemini Chat Model**, check the model. The default is `gemini-2.5-flash`; if it isn't listed, pick the newest *Flash* model from the dropdown (fast and cheap is ideal for chat). Do the same in **Transcribe a recording**.
 
-### 4. Expose n8n with ngrok
+### 5. Expose n8n with ngrok
 
 Meta can only deliver webhooks to a public HTTPS URL.
 
@@ -160,17 +216,17 @@ n8n start
 
 Open the **WhatsApp Trigger** node: the webhook URLs it shows should now start with your ngrok domain.
 
-### 5. Turn off status updates in the trigger
+### 6. Turn off status updates in the trigger
 
 WhatsApp sends a webhook not only for each message but also for each status change (*sent*, *delivered*, *read*). Each one starts an execution, which wastes Google Sheets reads and can trigger rate limits.
 
 Open **WhatsApp Trigger → Options → Receive Message Status Updates** and remove **All** so only real messages arrive.
 
-### 6. Publish both workflows
+### 7. Publish all three workflows
 
-Publish (or toggle **Active** on older n8n versions) **both** workflows:
+Publish (or toggle **Active** on older n8n versions) in this order:
 
-1. **Salon Booking - Tools** first. The agent calls the *published* version of the sub-workflow, not the draft.
+1. **Salon Booking - Tools** and **Transcribe audio** first. The main workflow calls the *published* version of each sub-workflow, not the draft.
 2. **Salon Booking Bot**. The WhatsApp Trigger registers its webhook with your Meta app automatically.
 
 > A Meta app has **one** webhook URL. Activating this workflow replaces whatever URL your other bots were using on the same app.
@@ -200,14 +256,16 @@ Send these from your WhatsApp test number (in Spanish or English):
 | 5 | `What appointments do I have?` | Lists the booking from step 4. |
 | 6 | `Cancel it please` | Asks which one or confirms, then cancels. `status` becomes `cancelled`. |
 | 7 | `Can I book a balayage this Sunday?` | Explains it's closed and proposes the next available date. |
-| 8 | Send a voice note | "Text only" reply. |
-| 9 | `Cancel APT-261110-XXXX` (someone else's code) | Not found. Ownership is enforced. |
+| 8 | A voice note: *"Do you have anything for a manicure tomorrow?"* | Same behavior as the text version. The **Transcribe audio** execution shows the transcription; **MessageLog** gets a row with `message_type = audio`. |
+| 9 | A photo or sticker | "Only text or audio" reply from **Reply Unsupported**. |
+| 10 | `Cancel APT-261110-XXXX` (someone else's code) | Not found. Ownership is enforced. |
 
-After each message, the **Executions** tab in n8n shows every tool call and its exact input and output. This is the best way to understand what the agent is doing
+After each message, the **Executions** tab in n8n shows every tool call and its exact input and output. This is the best way to understand what the agent is doing.
 
-### Testing the tools workflow alone
+### Testing the sub-workflows alone
 
-In **Salon Booking - Tools**, edit the pinned data on **When Called by Agent** (e.g. change `action` to `get_services` or `create_appointment`) and click **Test workflow**. Pinned data is only used for manual test runs.
+- **Salon Booking - Tools**: edit the pinned data on **When Called by Agent** (e.g. change `action` to `get_services` or `create_appointment`) and click **Test workflow**. Pinned data is only used for manual test runs.
+- **Transcribe audio**: open a successful audio execution of the main workflow, copy the output of **Normalize Message**, pin it on **When Executed by Another Workflow** and click **Test workflow**. WhatsApp media IDs expire after a while, so use a recent voice note.
 
 ---
 
@@ -215,14 +273,15 @@ In **Salon Booking - Tools**, edit the pinned data on **When Called by Agent** (
 
 | Symptom | Likely cause and fix |
 |---|---|
-| Messages arrive but replies fail with *recipient not in allowed list* (error 131030) | Argentine mobiles arrive as `549…` but the test allow-list uses `54…`. `Normalize Message` strips the `9` (`STRIP_AR_MOBILE_9 = true`). If your number is registered with the 9, set it to `false`. For other countries, check the number format in the allow-list. |
+| Messages arrive but replies fail with *recipient not in allowed list* (error 131030) | Argentine mobiles arrive as `549…` but the test allow-list may use `54…`. In **Normalize Message**, change the `replay_to` expression to `{{ $json.contacts[0].wa_id.replace(/^549/, '54') }}`. `phone` stays unchanged, so memory and appointments keep working. For other countries, check the number format in the allow-list. |
 | Nothing reaches n8n | `WEBHOOK_URL` not set or n8n not restarted. The workflow must be published/active, ngrok must be running, and the trigger's URL must show the ngrok domain. |
 | Webhook stopped after restarting ngrok | Without a static domain the URL changes. Use a static domain, or update `WEBHOOK_URL` and re-activate the workflow. |
-| *Workflow does not exist* in a tool | `REPLACE_WITH_TOOLS_WORKFLOW_ID` wasn't replaced. Open each tool node and pick **Salon Booking - Tools** from the list. |
+| *Workflow does not exist* in a tool or in **Transcribe audio** | A `REPLACE_WITH_…_WORKFLOW_ID` placeholder wasn't replaced. Open the node and pick the right workflow from the list. |
 | A tool node shows a warning and the workflow can't be published | Some n8n versions require the tool's **Name** field. Set it to the node name (`get_services`, `check_availability`, …). |
 | The bot says it is "having trouble accessing the catalog" | A tool call failed. Make sure **Salon Booking - Tools** is published and every Google Sheets node has a credential. Check **Salon Booking - Tools → Executions** for the red node. |
-| Many executions per message, or Gemini *429 Too Many Requests* | Status  updates are reaching the trigger (see setup step 5). Also, each tool call is one more Gemini request, and the free tier has low per-minute and per-day limits. Wait for the quota to reset or enable billing in Google AI Studio. |
-| Gemini *model not found* | Select a current model in **Gemini Chat Model**. New API keys may not have access to older models. Pick a current *Flash* model that supports tool calling. |
+| Voice notes get no reply | Check **Transcribe audio → Executions**. *401* in **HTTP Request**: the WhatsApp credential is missing or expired (test tokens last 24 h). Empty transcription: check the Gemini model in **Transcribe a recording**. |
+| Many executions per message, or Gemini *429 Too Many Requests* | Status updates are reaching the trigger (see setup step 6). Also, each tool call and each transcription is one more Gemini request, and the free tier has low per-minute and per-day limits. Wait for the quota to reset or enable billing in Google AI Studio. |
+| Gemini *model not found* | Select a current model in **Gemini Chat Model** and **Transcribe a recording**. New API keys may not have access to older models. Pick a current *Flash* model (with tool calling for the chat model). |
 | Dates show as numbers or `10/11/2026` in the sheet | Harmless. The engine reads ISO dates, `DD/MM/YYYY` and Sheets serial numbers. To keep things tidy, format the date columns as *Plain text*. |
 | Google Sheets *429 Too Many Requests* | Each tool call reads 4 tabs. That's fine for demos; for heavy traffic see the roadmap. |
 | The bot "forgets" the conversation after restarting n8n | Expected. *Window Buffer Memory* lives in n8n's process memory. Swap in a Postgres or Redis chat memory node for persistence. |
@@ -232,20 +291,20 @@ In **Salon Booking - Tools**, edit the pinned data on **When Called by Agent** (
 - **Google Sheets as the database**: zero setup, visible in real time during a demo, and editable by non-technical salon staff. It also feeds Looker Studio directly.
 - **Business logic in one Code node instead of many n8n nodes**: availability is algorithmic (intervals, overlaps, schedules). As code, it's readable, versioned and unit tested. n8n handles what it's best at: integrations, credentials and orchestration.
 - **Deterministic tools, flexible conversation**: the LLM handles language and dialogue; the engine is the single authority on what can be booked.
+- **Message normalization with a Set node**: mapping the webhook fields is simple field extraction, so a Set node keeps it visible and editable in the n8n UI without code.
+- **One message format for every input type**: audio is converted to text before the agent, so the agent, its prompt and its tools stay the same no matter how the customer writes.
 - **Plain-JS date handling**: uses `Intl` with an explicit time zone, so behavior doesn't depend on the server's clock settings.
 
 ## Limitations and roadmap
 
 - **Concurrency**: two customers confirming the exact same slot within the same second could both succeed, because Sheets has no transactions. → Move to **PostgreSQL** with a unique constraint or exclusion constraint on (stylist, time range).
+- **Audio error handling**: if a download or transcription fails, the customer gets no reply. → Add an error output on **Transcribe audio** that sends a "please type your message" reply.
+- **More input types**: images (e.g. a reference photo for a haircut) via another sub-workflow with Gemini vision.
 - **Reminders**: send a reminder 24 h before each appointment via a scheduled workflow. Outside WhatsApp's 24-hour window this requires an approved message template.
-- **Dashboard**: a Looker Studio report on `Appointments` (bokings per day, revenue, no-show rate, top services and stylists).
+- **Dashboard**: a Looker Studio report on `Appointments` (bookings per day, revenue, no-show rate, top services and stylists).
 - **Persistent chat memory** (Postgres or Redis) and a **human handoff** flag.
 - **Interactive WhatsApp messages** (buttons and lists) for picking times.
 
 ## Tech stack
 
-n8n · n8n AI Agent (LangChain) · Google Gemini · WhatsApp Cloud API · Google Sheets API · JavaScript (Node.js) · ngrok
-
-
-
-
+n8n · n8n AI Agent (LangChain) · Google Gemini (chat + audio transcription) · WhatsApp Cloud API (messages + media) · Google Sheets API · JavaScript (Node.js) · ngrok

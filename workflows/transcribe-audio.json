@@ -1,0 +1,215 @@
+{
+  "name": "Transcribe audio",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        304,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio_id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        496,
+        352
+      ],
+      "id": "8efaca54-f0e7-41ca-a55d-3f14ca6df58e",
+      "name": "Download media",
+      "webhookId": "f942690d-2c9b-4148-9054-f9088885a422",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "avys4oklSXshBEAV",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer [TU_TOKEN_WHATSAPP_BUSINESS]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        656,
+        352
+      ],
+      "id": "304cb470-e25f-4720-be87-43da8ca19839",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        352
+      ],
+      "id": "b0a1f937-b0cb-4498-88e5-cb0f85d6d351",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PiJFPMrIzn2N1Fi3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "72118c63-6289-4b4c-8477-17d4c9e13c6c",
+              "name": "phone",
+              "value": "={{ $('When Executed by Another Workflow').item.json.replay_to }}",
+              "type": "string"
+            },
+            {
+              "id": "f599c8d8-cf99-4fb0-b972-3b91206f8fa2",
+              "name": "replay_to",
+              "value": "={{ $('When Executed by Another Workflow').item.json.replay_to }}",
+              "type": "string"
+            },
+            {
+              "id": "d47f1974-c7cf-46f3-9e53-dcbd7abab894",
+              "name": "profile_name",
+              "value": "={{ $('When Executed by Another Workflow').item.json.profile_name }}",
+              "type": "string"
+            },
+            {
+              "id": "5be2f0a6-9b16-49b1-9114-788fa8f31d6d",
+              "name": "type",
+              "value": "={{ $('When Executed by Another Workflow').item.json.type }}",
+              "type": "string"
+            },
+            {
+              "id": "968ce2b9-c7c7-4b9b-8a9f-22d727191237",
+              "name": "text",
+              "value": "={{ $json.content.parts[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "f0ddfa06-463b-4d60-a11a-53a2e7364d1f",
+              "name": "message_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.message_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f8b032ad-2c4b-48fe-961a-c72a9f65990c",
+              "name": "phone_number_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.phone_number_id }}",
+              "type": "string"
+            },
+            {
+              "id": "901ec44a-0a32-4412-bc87-55cb5f41c7bd",
+              "name": "audio_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.audio_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1008,
+        352
+      ],
+      "id": "d4e535c0-8700-4795-87c3-8cefe9fcd2d8",
+      "name": "Set response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Download media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download media": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Set response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "54a1944e-8b68-46ee-b4be-d47118055d01",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f263d66ceca6abe4f7ebcc13192b176fdae2e3c203d702f3b107110bbe803f2d"
+  },
+  "nodeGroups": [],
+  "id": "KHv2uVu8gIGVsLf1",
+  "tags": []
+}

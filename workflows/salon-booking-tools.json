@@ -80,7 +80,7 @@
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -111,7 +111,7 @@
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -142,7 +142,7 @@
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -173,7 +173,7 @@
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -299,7 +299,7 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -352,7 +352,7 @@
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
@@ -407,7 +407,7 @@
         "operation": "update",
         "documentId": {
           "__rl": true,
-          "value": "1w7JkGqlgp3Tyou74KDyinEch1jRMos9eevMdX5JMLT8",
+          "value": "REPLACE_WITH_YOUR_SPREADSHEET_ID",
           "mode": "id"
         },
         "sheetName": {
